@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Product Crawler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:#0a0a0a;--surface:#111;--surface2:#181818;
+    --border:#252525;--border2:#333;
+    --text:#e8e8e8;--text2:#888;--text3:#555;
+    --accent:#00ff88;--accent2:#00cc6a;
+    --red:#ff4455;--amber:#ffaa00;--blue:#4488ff;
+    --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+  .topbar{border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,10,0.95);backdrop-filter:blur(8px);z-index:100;}
+  .logo{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.05em;display:flex;align-items:center;gap:8px;}
+  .logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .badge{font-family:var(--mono);font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:2px;color:var(--text2);}
+  .main{max-width:1100px;margin:0 auto;padding:40px 32px;}
+  .hero{margin-bottom:36px;}
+  .hero h1{font-family:var(--mono);font-size:32px;font-weight:400;letter-spacing:-.02em;line-height:1.2;margin-bottom:8px;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{font-size:14px;color:var(--text2);line-height:1.6;}
+  .input-section{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;margin-bottom:24px;}
+  .input-label{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;}
+  .url-row{display:flex;gap:10px;}
+  .url-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:10px 14px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;transition:border-color .15s;}
+  .url-input:focus{border-color:var(--accent);}
+  .url-input::placeholder{color:var(--text3);}
+  .crawl-btn{background:var(--accent);color:#000;border:none;padding:10px 24px;font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.05em;cursor:pointer;border-radius:3px;transition:all .15s;white-space:nowrap;}
+  .crawl-btn:hover{background:var(--accent2);}
+  .crawl-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .progress-bar{height:2px;background:var(--border);margin-bottom:16px;display:none;border-radius:0;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--accent);width:0%;transition:width .4s ease;}
+  .status-line{font-family:var(--mono);font-size:12px;display:flex;align-items:center;gap:8px;min-height:24px;margin-bottom:20px;color:var(--text2);}
+  .status-line.ok{color:var(--accent);}
+  .status-line.err{color:var(--red);}
+  .status-line.loading{color:var(--amber);}
+  .spin{width:12px;height:12px;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .5s linear infinite;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .result-layout{display:grid;grid-template-columns:1fr 340px;gap:20px;}
+  @media(max-width:768px){.result-layout{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:4px;}
+  .panel-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);}
+  .panel-title{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;}
+  .panel-body{padding:16px;}
+  .field-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}
+  .field-row:last-child{border-bottom:none;}
+  .field-key{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;padding-top:1px;width:110px;}
+  .field-val{font-size:13px;color:var(--text);text-align:right;word-break:break-word;flex:1;}
+  .field-val.price{font-family:var(--mono);font-size:18px;color:var(--accent);font-weight:500;}
+  .field-val.discount{color:var(--red);font-weight:500;}
+  .field-val.instock{color:var(--accent);}
+  .field-val.outstock{color:var(--red);}
+  .tag-wrap{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;}
+  .tag{font-family:var(--mono);font-size:11px;padding:2px 8px;border:1px solid var(--border2);border-radius:2px;color:var(--text2);}
+  .img-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .img-thumb{width:72px;height:72px;object-fit:cover;border-radius:3px;border:1px solid var(--border);transition:border-color .15s;cursor:pointer;}
+  .img-thumb:hover{border-color:var(--accent);}
+  .json-area{font-family:var(--mono);font-size:11px;color:#7ec8a8;background:var(--bg);padding:14px;border-radius:3px;white-space:pre;overflow-x:auto;max-height:400px;overflow-y:auto;line-height:1.6;}
+  .toolbar{display:flex;gap:6px;}
+  .tool-btn{font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:2px;cursor:pointer;transition:all .15s;}
+  .tool-btn:hover,.tool-btn.copied{border-color:var(--accent);color:var(--accent);}
+  .placeholder{text-align:center;padding:60px 20px;color:var(--text3);font-family:var(--mono);font-size:12px;}
+  .placeholder-icon{font-size:40px;margin-bottom:16px;opacity:.5;}
+  .example-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px;}
+  .ex-btn{font-family:var(--mono);font-size:11px;padding:5px 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:2px;cursor:pointer;transition:all .15s;}
+  .ex-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .side-sticky{position:sticky;top:74px;}
+  .api-notice{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:10px;padding:8px 12px;border:1px solid var(--border);border-radius:3px;display:none;}
+  .api-notice.show{display:block;}
+  .api-notice a{color:var(--accent);text-decoration:none;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><div class="logo-dot"></div>PRODUCT_CRAWLER</div>
+  <div class="badge">Vercel + Railway</div>
+</div>
+
+<div class="main">
+  <div class="hero">
+    <h1>Extract product data<br/>from <span>any</span> e-commerce URL</h1>
+    <p>Hỗ trợ Shopee · Lazada · Tiki · Amazon · eBay · Shopify · WooCommerce và mọi trang bán hàng</p>
+  </div>
+
+  <div class="input-section">
+    <div class="input-label">// target url</div>
+    <div class="url-row">
+      <input class="url-input" id="urlInput" type="text" placeholder="https://www.amazon.com/dp/... hoặc bất kỳ URL sản phẩm nào"/>
+      <button class="crawl-btn" id="crawlBtn" onclick="startCrawl()">▶ CRAWL</button>
+    </div>
+    <div id="apiNotice" class="api-notice">
+      ⚠ Chưa cấu hình API URL. Mở <code>index.html</code> và sửa biến <code>API_BASE</code> thành Railway URL của bạn.
+    </div>
+  </div>
+
+  <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="status-line" id="statusLine"></div>
+
+  <div id="resultArea">
+    <div class="placeholder">
+      <div class="placeholder-icon">◈</div>
+      <div>Nhập URL sản phẩm và nhấn CRAWL</div>
+      <div style="margin-top:8px;color:#444">Paste link từ bất kỳ trang bán hàng nào</div>
+      <div class="example-row">
+        <button class="ex-btn" onclick="fill('https://www.amazon.com/dp/B0CHX3QBCH')">Amazon</button>
+        <button class="ex-btn" onclick="fill('https://www.ebay.com/itm/166961836390')">eBay</button>
+        <button class="ex-btn" onclick="fill('https://tiki.vn/dien-thoai-samsung-galaxy-s24-ultra-p1234.html')">Tiki</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG: Thay YOUR_RAILWAY_URL bằng URL Railway của bạn sau khi deploy ───
+const API_BASE = "https://product-crawler-api.onrender.com";
+// Ví dụ: const API_BASE = "https://product-crawler-api.up.railway.app";
+// ─────────────────────────────────────────────────────────────────────────────
+
+let crawledData = null;
+
+window.addEventListener("load", () => {
+  if (API_BASE === "YOUR_RAILWAY_URL") {
+    document.getElementById("apiNotice").classList.add("show");
+  }
+});
+
+function fill(url) { document.getElementById("urlInput").value = url; }
+
+function setStatus(msg, cls = "") {
+  const el = document.getElementById("statusLine");
+  el.className = "status-line " + cls;
+  el.innerHTML = cls === "loading" ? `<div class="spin"></div>${msg}` : msg;
+}
+
+function setProgress(pct) {
+  const bar = document.getElementById("progressBar");
+  const fill = document.getElementById("progressFill");
+  bar.style.display = pct > 0 ? "block" : "none";
+  fill.style.width = pct + "%";
+}
+
+async function startCrawl() {
+  const url = document.getElementById("urlInput").value.trim();
+  if (!url) return;
+  if (API_BASE === "YOUR_RAILWAY_URL") {
+    setStatus("✗ Chưa cấu hình Railway API URL — xem hướng dẫn bên dưới", "err");
+    return;
+  }
+
+  document.getElementById("crawlBtn").disabled = true;
+  setStatus("Connecting...", "loading");
+  setProgress(20);
+
+  try {
+    setProgress(45);
+    setStatus("Fetching & parsing product page...", "loading");
+
+    const res = await fetch(API_BASE + "/api/crawl", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+
+    setProgress(75);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || "Crawl failed");
+
+    crawledData = json.data;
+    const count = Object.values(crawledData).filter(v => v && (Array.isArray(v) ? v.length : true)).length;
+    setProgress(100);
+    setStatus(`✓ Done — ${count} fields extracted`, "ok");
+    renderResult(crawledData);
+    setTimeout(() => setProgress(0), 600);
+  } catch (err) {
+    setStatus("✗ " + err.message, "err");
+    setProgress(0);
+  }
+
+  document.getElementById("crawlBtn").disabled = false;
+}
+
+function renderResult(p) {
+  const fields = [
+    ["title", p.title, ""],
+    ["platform", p.platform, ""],
+    ["brand", p.brand, ""],
+    ["price", p.price, "price"],
+    ["availability", p.availability, p.availability?.toLowerCase().includes("out") ? "outstock" : "instock"],
+    ["rating", p.rating ? `${p.rating} ★  (${p.review_count || "?"} reviews)` : null, ""],
+    ["sold", p.sold_count, ""],
+    ["sku", p.sku, ""],
+    ["seller", p.seller, ""],
+    ["category", p.category, ""],
+    ["shipping", p.shipping, ""],
+    ["description", p.description, ""],
+  ].filter(([, v]) => v);
+
+  const arrFields = [
+    ["colors", p.colors],
+    ["sizes", p.sizes],
+    ["variants", p.variants],
+  ].filter(([, v]) => v && v.length > 0);
+
+  const fieldHTML = fields.map(([k, v, cls]) =>
+    `<div class="field-row"><div class="field-key">${k}</div><div class="field-val ${cls}">${v}</div></div>`
+  ).join("") + arrFields.map(([k, v]) =>
+    `<div class="field-row"><div class="field-key">${k}</div><div class="tag-wrap">${v.map(t => `<span class="tag">${t}</span>`).join("")}</div></div>`
+  ).join("");
+
+  const imgs = (p.images || []).filter(Boolean).slice(0, 10);
+  const imgsHTML = imgs.length ? `
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header"><span class="panel-title">// images (${imgs.length})</span></div>
+      <div class="panel-body">
+        <div class="img-grid">${imgs.map(i => `<img class="img-thumb" src="${i}" onerror="this.style.display='none'" onclick="window.open('${i}','_blank')"/>`).join("")}</div>
+      </div>
+    </div>` : "";
+
+  document.getElementById("resultArea").innerHTML = `
+    <div class="result-layout">
+      <div>
+        ${imgsHTML}
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">// product data</span>
+            <div class="toolbar">
+              <button class="tool-btn" onclick="copyText()">Copy Text</button>
+              <button class="tool-btn" onclick="copyCSV()">Copy CSV</button>
+            </div>
+          </div>
+          <div class="panel-body">${fieldHTML}</div>
+        </div>
+      </div>
+      <div class="side-sticky">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">// json output</span>
+            <div class="toolbar"><button class="tool-btn" id="jcb" onclick="copyJSON()">Copy JSON</button></div>
+          </div>
+          <div class="panel-body" style="padding:0">
+            <pre class="json-area">${esc(JSON.stringify(p, null, 2))}</pre>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function copyJSON() {
+  if (!crawledData) return;
+  navigator.clipboard.writeText(JSON.stringify(crawledData, null, 2));
+  const b = document.getElementById("jcb");
+  b.textContent = "Copied!"; b.classList.add("copied");
+  setTimeout(() => { b.textContent = "Copy JSON"; b.classList.remove("copied"); }, 2000);
+}
+
+function copyText() {
+  if (!crawledData) return;
+  navigator.clipboard.writeText(
+    Object.entries(crawledData).filter(([,v])=>v&&(Array.isArray(v)?v.length:true))
+    .map(([k,v])=>`${k}: ${Array.isArray(v)?v.join(", "):v}`).join("\n")
+  );
+}
+
+function copyCSV() {
+  if (!crawledData) return;
+  const headers = Object.keys(crawledData);
+  const vals = Object.values(crawledData).map(v => `"${(Array.isArray(v)?v.join("|"):String(v??'')).replace(/"/g,'""')}"`);
+  navigator.clipboard.writeText(headers.join(",") + "\n" + vals.join(","));
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("urlInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") startCrawl();
+  });
+});
+</script>
+</body>
+</html>
